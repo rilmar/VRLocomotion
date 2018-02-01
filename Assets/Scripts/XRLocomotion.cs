@@ -10,17 +10,30 @@ public class Blink
     public Transform origin; // Position where to cast a ray from
     public float delay = 0.5f; // Time until user can blink again
     public GameObject blinkMarker; // Visual placeholder for new location
-    public float blinkHeight = 1.0f; // Farthest a blink can go vertically
+    public float blinkHeight = 1.0f; // Farthest a blink can go vertically 0 for none
     public float playerHeight = 2.5f; // Minimum vertical room that player needs in order to navigate a space
     public float maxAngle = 10;
 
-    public bool validateBlink(Vector3 position, Vector3 normal)
+    public bool validateBlink(Vector3 oldPos, Vector3 newPos, Vector3 normal)
     {
 
         if(Vector3.Angle(Vector3.up, normal) > maxAngle)
         {
             return false;
         }
+
+        if(blinkHeight > 0)
+        {
+            Vector3 dist = newPos - oldPos;
+         
+            if (dist.y > blinkHeight)
+            {
+                Debug.Log("out of vertical range");
+                return false;
+            }
+
+        }
+
         return true;
     }
 }
@@ -155,6 +168,13 @@ public class XRLocomotion : MonoBehaviour
 
     private void blinkPlayer()
     {
+        if (marker != null)
+        {
+            Destroy(marker);
+        }
+
+        Vector3 currentPosition = playerView.transform.position;
+        currentPosition.y = transform.position.y;
 
         if (Input.GetAxis(verticalJoystick) == 0 && inBlink && Input.GetAxis(horizontalJoystick) == 0)
         {
@@ -163,15 +183,13 @@ public class XRLocomotion : MonoBehaviour
             arcLine.enabled = false;
             arcLine.positionCount = 0;
 
-            if (marker != null)
+            
+            if (blink.validateBlink(currentPosition, newPosition, normal))
             {
-                Destroy(marker);
-            }
-            Debug.Log("Leaving Blink");
-            if (blink.validateBlink(newPosition, normal))
-            {
-                Debug.Log("Blink Validated");
-                transform.position = newPosition;
+                Vector3 offset = transform.position - currentPosition;
+
+
+                transform.position = newPosition + offset;
                 blinked = true;
             }
         }
@@ -183,9 +201,11 @@ public class XRLocomotion : MonoBehaviour
             if (drawArc(blink.origin.position, blink.origin.forward, out newPosition, out normal))
             {
                 //returns a value
-                if (blink.validateBlink(newPosition, normal))
+                
+                if (blink.validateBlink(currentPosition, newPosition, normal))
                 {
                     //valid spot
+                    marker = Instantiate(blink.blinkMarker, newPosition, getJoystickRotation());
                     arc.setValid(arcLine);
                 } else
                 {
@@ -205,7 +225,7 @@ public class XRLocomotion : MonoBehaviour
     }
     
 
-    public bool drawArc(Vector3 origin, Vector3 direction, out Vector3 position, out Vector3 normal)
+    private bool drawArc(Vector3 origin, Vector3 direction, out Vector3 position, out Vector3 normal)
     {
 
         //for each point, raycast, then return if hit
@@ -235,7 +255,6 @@ public class XRLocomotion : MonoBehaviour
 
             if (Physics.Linecast(last, next, out hit))
             {
-                Debug.Log("hit: " + hit.transform);
                 pos.Add(hit.point);
                 position = hit.point;
                 normal = hit.normal;
@@ -281,6 +300,11 @@ public class XRLocomotion : MonoBehaviour
         for (int x = 0; x < 3; x++)
             ret[x] = ParabolicCurveDeriv(v0[x], a[x], t);
         return ret;
+    }
+
+    private Quaternion getJoystickRotation()
+    {
+        return Quaternion.Euler(Vector3.forward);
     }
 
     private void rotatePlayer(float angle)
