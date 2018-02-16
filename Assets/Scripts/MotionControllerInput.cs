@@ -4,11 +4,17 @@ using UnityEngine;
 using UnityEngine.XR;
 
 public class MotionControllerInput : MonoBehaviour {
-    public string triggerName;
+    [Header("Trigger and Grip inputs")]
+    [SerializeField] private string triggerName;
+    [SerializeField] private string gripName;
+    [Header("Hand Objects and trigger colors")]
+    [SerializeField] private GameObject hand;
+    [SerializeField] private Color none = Color.gray, triggerColor = Color.blue, gripColor = Color.cyan;
 
-    //public Animator anim;
+    private Renderer rend;
 
     //from old controller
+    [Header("Parameters for grabbing functionality")]
     public float grabRadius;
     public LayerMask grabMask;
 
@@ -17,6 +23,7 @@ public class MotionControllerInput : MonoBehaviour {
 
     private Quaternion lastRotation, currentRotation;
 
+    //data for controller reference
     private XRTracker xrTracker;
     private XRNode node;
     private List<XRNodeState> nodeStates = new List<XRNodeState>();
@@ -24,6 +31,8 @@ public class MotionControllerInput : MonoBehaviour {
 
     // Use this for initialization
     void Start () {
+
+        /*
         xrTracker = GetComponent<XRTracker>();
 
         UnityEngine.XR.InputTracking.GetNodeStates(nodeStates);
@@ -35,33 +44,29 @@ public class MotionControllerInput : MonoBehaviour {
                 nodeState = n;
             }
         }
+        */
+        rend = hand.GetComponent<Renderer>();
 
-        //Debug.Log(nodeState.nodeType);
+        Debug.Log(nodeState.nodeType);
 
     }
 	
 	// Update is called once per frame
 	void Update () {
-        /*
-        if (Input.GetAxis(trigger) > 0)
-        {
-            Debug.Log("trigger press: " + trigger);
-        }
-        */
 
-        if (!grabbing && Input.GetAxis(triggerName) == 1)
+        if (!grabbing && Input.GetAxis(gripName) == 1.0)
         {
             Debug.Log("Grabbing with: " + triggerName);
+            rend.material.color = triggerColor;
             //grab();
             grabbing = true;
-            //anim.SetBool("gripping", true);
         }
-        if (grabbing && Input.GetAxis(triggerName) < 1)
+        if (grabbing && Input.GetAxis(gripName) < 1.0)
         {
             Debug.Log("Dropping with: " + triggerName);
             //drop();
+            rend.material.color = none;
             grabbing = false;
-            //anim.SetBool("gripping", false);
         }
 
 
@@ -106,14 +111,19 @@ public class MotionControllerInput : MonoBehaviour {
 
             Vector3 accel = new Vector3(0, 0, 0);
             Vector3 angAccel = new Vector3(0, 0, 0);
+
             nodeState.TryGetVelocity(out accel);
+
             Debug.Log("accel" + accel.ToString());
             Debug.Log("angAccel" + angAccel.ToString());
+
             nodeState.TryGetAngularVelocity(out angAccel);
+
             grabbedObject.GetComponent<Rigidbody>().velocity = accel;
             grabbedObject.GetComponent<Rigidbody>().angularVelocity = angAccel;
 
             grabbedObject = null;
+
         }
     }
 
